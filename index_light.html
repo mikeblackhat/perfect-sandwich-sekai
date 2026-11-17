@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>Perfect Sandwich</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    body,
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090514;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      background: radial-gradient(circle at 50% 45%, #2a1548 0%, #0d081e 100%);
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 5;
+    }
+
+    #rays-bg {
+      position: absolute;
+      width: 640px;
+      height: 640px;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0.65;
+      pointer-events: none;
+      transform-origin: center center;
+      z-index: 2;
+      display: none;
+    }
+
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .hud {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .badge {
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      padding: 8px 16px;
+      border-radius: 999px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    #timer-badge {
+      color: #facc15;
+    }
+
+    #lang-btn {
+      pointer-events: auto;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      color: #fff;
+      font-weight: bold;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      transition: background 0.15s ease;
+    }
+
+    #lang-btn:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    #hint {
+      position: absolute;
+      top: 75px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.95; }
+    }
+
+    /* Countdown 3, 2, 1 before results */
+    #countdown-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 22;
+    }
+
+    #countdown-number {
+      font-size: 96px;
+      font-weight: 900;
+      color: #facc15;
+      -webkit-text-stroke: 4px #78350f;
+      text-shadow: 0 0 30px rgba(250, 204, 21, 0.8), 0 6px 16px rgba(0,0,0,0.8);
+      transform: scale(0.5);
+      opacity: 0;
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s ease;
+    }
+
+    #gameover-screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      pointer-events: auto;
+      z-index: 20;
+    }
+
+
+
+    #result-banner {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 25;
+    }
+
+    #final-score-text {
+      font-size: 56px;
+      font-weight: 900;
+      color: #ffffff;
+      paint-order: stroke fill;
+      -webkit-text-stroke: 3.5px #9333ea;
+      text-shadow: 0 4px 14px rgba(0, 0, 0, 0.75), 0 0 20px rgba(168, 85, 247, 0.65);
+      line-height: 1.1;
+      letter-spacing: 0.5px;
+    }
+
+    #accuracy-badge {
+      margin-top: 6px;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fde047;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(250, 204, 21, 0.4);
+      padding: 4px 14px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+    }
+
+    #btn-retry {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      padding: 0;
+      outline: none;
+      display: none;
+      z-index: 26;
+      transition: transform 0.12s ease;
+      -webkit-tap-highlight-color: transparent;
+      text-align: center;
+    }
+
+    #btn-retry:active {
+      transform: translate(-50%, -50%) scale(0.92);
+    }
+
+    #btn-retry-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    #btn-retry img {
+      width: 155px;
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.6));
+    }
+
+    #btn-retry-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      font-size: 15px;
+      font-weight: 900;
+      color: #5c3008;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      pointer-events: none;
+      text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-container">
+    <img id="rays-bg" src="textures/Rays.png" alt="Rays">
+    <canvas id="canvas"></canvas>
+    <div id="ui-layer">
+      <div class="hud">
+        <div id="score-badge" class="badge">🥪 <span id="score-val">0</span> pts</div>
+        <button id="lang-btn" aria-label="Toggle language">ES</button>
+        <div id="timer-badge" class="badge">⏳ <span id="timer-val">25</span>s</div>
+      </div>
+      <div id="hint">Tap to drop ingredient!</div>
+      <div id="countdown-overlay">
+        <div id="countdown-number">3</div>
+      </div>
+      <div id="gameover-screen">
+        
+        <div id="result-banner">
+          <div id="final-score-text">0 pts</div>
+          <div id="accuracy-badge">Accuracy: 100%</div>
+        </div>
+        <button class="btn-retry" id="btn-retry">
+          <div id="btn-retry-wrapper">
+            <img src="textures/Retry_Button.png" alt="Try Again">
+            <span id="btn-retry-label">Try Again</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+const ASSETS = {
+  'Bacon_Asset': 'textures/Bacon_Asset.png',
+  'Banana_Asset': 'textures/Banana_Asset.png',
+  'Bread_Asset': 'textures/Bread_Asset.png',
+  'Cat_Asset': 'textures/Cat_Asset.png',
+  'Choco_Asset': 'textures/Choco_Asset.png',
+  'Egg_Asset': 'textures/Egg_Asset.png',
+  'Ham_Asset': 'textures/Ham_Asset.png',
+  'Rays': 'textures/Rays.png',
+  'Retry_Button': 'textures/Retry_Button.png',
+  'Squid_Asset': 'textures/Squid_Asset.png',
+  'Veggie_Asset': 'textures/Veggie_Asset.png'
+};
+
+// Matter.js modules
+const { Engine, World, Bodies, Body, Composite, Events } = Matter;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const container = document.getElementById('game-container');
+
+// Language support: English default, Spanish toggle
+let currentLang = 'en';
+const TRANSLATIONS = {
+  en: {
+    pts: 'pts',
+    hintNormal: 'Tap to drop ingredient!',
+    hintTopBread: 'FINAL BREAD! Close the sandwich!',
+    tryAgain: 'Try Again',
+    accuracy: 'Accuracy',
+    langToggle: 'ES'
+  },
+  es: {
+    pts: 'pts',
+    hintNormal: '¡Toca para soltar el ingrediente!',
+    hintTopBread: '¡TAPA FINAL! ¡Colócala para cerrar el sandwich!',
+    tryAgain: 'Reintentar',
+    accuracy: 'Precisión',
+    langToggle: 'EN'
+  }
+};
+
+function setLanguage(lang) {
+  currentLang = lang;
+  const t = TRANSLATIONS[lang];
+  document.getElementById('lang-btn').textContent = t.langToggle;
+  document.getElementById('btn-retry-label').textContent = t.tryAgain;
+  updateHintText();
+}
+
+function updateHintText() {
+  const t = TRANSLATIONS[currentLang];
+  const hint = document.getElementById('hint');
+  if (!hint) return;
+  const isFinalBread = activeItem && activeItem.isTopBread;
+  if (isFinalBread) {
+    hint.textContent = t.hintTopBread;
+    hint.style.color = '#fde047';
+    hint.style.fontWeight = 'bold';
+  } else {
+    hint.textContent = t.hintNormal;
+    hint.style.color = 'rgba(255, 255, 255, 0.75)';
+    hint.style.fontWeight = '700';
+  }
+}
+
+document.getElementById('lang-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  setLanguage(currentLang === 'en' ? 'es' : 'en');
+});
+
+let W, H;
+function resize() {
+  W = container.clientWidth;
+  H = container.clientHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const preloadedImgs = {};
+for (const [k, v] of Object.entries(ASSETS)) {
+  const img = new Image();
+  img.src = v;
+  preloadedImgs[k] = img;
+}
+
+// 8 unique ingredients + final top bread in sequential order
+const ORDERED_DROP_ITEMS = [
+  'Veggie_Asset',
+  'Bacon_Asset',
+  'Choco_Asset',
+  'Egg_Asset',
+  'Banana_Asset',
+  'Ham_Asset',
+  'Cat_Asset',
+  'Squid_Asset',
+  'Bread_Asset'
+];
+
+let engine, world;
+let plateBody;
+let activeItem = null;
+let oscAngle = 0;
+let gameState = 'PLAYING';
+let score = 0;
+let timeLeft = 25;
+let timerInterval = null;
+let droppedBodies = [];
+let dropOrderIndex = 0;
+let isEndingSequence = false;
+
+// Reveal & recenter state
+let stackRecenterActive = false;
+let stackRecenterElapsed = 0;
+const stackRecenterDurationSec = 0.25;
+let stackRecenterOffsetY = 0;
+let stackRecenterBaseStartY = 0;
+let slotLandedY = [];
+
+let raysActive = false;
+let raysElapsed = 0;
+const raysScaleDurationSec = 0.25;
+const raysRotationSpeedDeg = 30;
+
+let resultBannerActive = false;
+let resultBannerElapsed = 0;
+let resultBannerStartY = 0;
+let resultBannerEndY = 0;
+const resultBannerAnimDurationSec = 0.25;
+
+let retryButtonPending = false;
+let retryButtonElapsed = 0;
+const retryButtonDelaySec = 0.2;
+
+function initPhysics() {
+  engine = Engine.create({
+    enableSleeping: false,
+    gravity: { x: 0, y: 2.4 },
+    positionIterations: 16,
+    velocityIterations: 16
+  });
+  world = engine.world;
+
+  // Base bread centered in the middle of the screen
+  const plateW = Math.min(W * 0.65, 240);
+  const plateH = plateW * 0.38;
+  const plateY = H * 0.52;
+
+  // Solid base bread collider (top surface aligned at plateY)
+  // Height 36px so falling ingredients never tunnel or pass through it
+  plateBody = Bodies.rectangle(W / 2, plateY + 10, plateW * 0.96, 36, {
+    isStatic: true,
+    friction: 0.95,
+    frictionStatic: 1.0,
+    render: { key: 'Bread_Asset', w: plateW, h: plateH, isFlipped: false }
+  });
+  World.add(world, plateBody);
+
+  // Invisible ground to catch falling items below
+  const floor = Bodies.rectangle(W / 2, H + 120, W * 3, 100, { isStatic: true });
+  World.add(world, floor);
+
+  dropOrderIndex = 0;
+  isEndingSequence = false;
+  stackRecenterActive = false;
+  raysActive = false;
+  resultBannerActive = false;
+  retryButtonPending = false;
+  slotLandedY = [];
+
+  spawnNextItem();
+}
+
+function getHighestStackY() {
+  let highestY = plateBody.position.y;
+  for (const b of droppedBodies) {
+    if (b.position.y < plateBody.position.y + 50 && b.position.y > 0) {
+      if (b.position.y < highestY) {
+        highestY = b.position.y;
+      }
+    }
+  }
+  return highestY;
+}
+
+function spawnNextItem() {
+  if (gameState !== 'PLAYING') return;
+
+  if (dropOrderIndex >= ORDERED_DROP_ITEMS.length) {
+    startEndCountdownSequence();
+    return;
+  }
+
+  const key = ORDERED_DROP_ITEMS[dropOrderIndex];
+  const isFinalBread = (key === 'Bread_Asset');
+
+  // Match size of the base bread when it is the top bread
+  const itemW = isFinalBread ? plateBody.render.w : Math.min(W * 0.55, 200);
+  const itemH = isFinalBread ? plateBody.render.h : itemW * 0.42;
+
+  // Adapt swing height as sandwich stacks up
+  const highestY = getHighestStackY();
+  const spawnY = Math.max(70, Math.min(H * 0.22, highestY - 110));
+
+  activeItem = {
+    key: key,
+    isTopBread: isFinalBread,
+    w: itemW,
+    h: itemH,
+    x: W / 2,
+    y: spawnY
+  };
+
+  updateHintText();
+}
+
+function dropActiveItem() {
+  if (!activeItem || gameState !== 'PLAYING') return;
+
+  const current = activeItem;
+  activeItem = null;
+
+  // Stacking collider: width 86%, height 20px so layers rest tightly without tunneling
+  const colliderW = current.w * 0.86;
+  const colliderH = 20;
+
+  const b = Bodies.rectangle(current.x, current.y, colliderW, colliderH, {
+    chamfer: { radius: 4 },
+    friction: 0.9,
+    frictionStatic: 1.0,
+    restitution: 0.02,
+    density: 0.004
+  });
+
+  // Snappy initial downward speed
+  Body.setVelocity(b, { x: 0, y: 8 });
+
+  b.renderKey = current.key;
+  b.renderW = current.w;
+  b.renderH = current.h;
+  b.isTopBread = current.isTopBread;
+  b.settled = false;
+  b.counted = false;
+
+  World.add(world, b);
+  droppedBodies.push(b);
+
+  dropOrderIndex++;
+
+  if (b.isTopBread) {
+    isEndingSequence = true;
+    setTimeout(() => {
+      startEndCountdownSequence();
+    }, 600);
+    return;
+  }
+
+  // Delay next item
+  setTimeout(() => {
+    if (gameState === 'PLAYING' && !isEndingSequence) {
+      spawnNextItem();
+    }
+  }, 280);
+}
+
+// Tap handler
+container.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#btn-retry') || e.target.closest('#lang-btn')) return;
+  if (gameState === 'PLAYING') {
+    dropActiveItem();
+  }
+});
+
+document.getElementById('btn-retry').addEventListener('click', () => {
+  resetGame();
+});
+
+function resetGame() {
+  clearInterval(timerInterval);
+  droppedBodies = [];
+  World.clear(world, false);
+  Engine.clear(engine);
+
+  score = 0;
+  timeLeft = 25;
+  dropOrderIndex = 0;
+  isEndingSequence = false;
+  stackRecenterActive = false;
+  raysActive = false;
+  resultBannerActive = false;
+  retryButtonPending = false;
+
+  document.getElementById('score-val').textContent = '0';
+  document.getElementById('timer-val').textContent = '25';
+  document.getElementById('gameover-screen').style.display = 'none';
+  document.getElementById('btn-retry').style.display = 'none';
+  document.getElementById('countdown-overlay').style.display = 'none';
+  document.getElementById('rays-bg').style.display = 'none';
+  document.getElementById('rays-bg').style.transform = 'translate(-50%, -50%) scale(0)';
+  document.getElementById('result-banner').style.transform = 'translate(-50%, -50%) scale(0)';
+
+  const hint = document.getElementById('hint');
+  if (hint) {
+    hint.style.display = 'block';
+  }
+  updateHintText();
+
+  gameState = 'PLAYING';
+  initPhysics();
+  startTimer();
+}
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    if (gameState !== 'PLAYING') return;
+    timeLeft--;
+    document.getElementById('timer-val').textContent = timeLeft;
+
+    if (timeLeft <= 0) {
+      startEndCountdownSequence();
+    }
+  }, 1000);
+}
+
+// 3, 2, 1 Countdown before settling results
+function startEndCountdownSequence() {
+  if (gameState === 'COUNTDOWN' || gameState === 'ENDED') return;
+  gameState = 'COUNTDOWN';
+  clearInterval(timerInterval);
+  activeItem = null;
+
+  document.getElementById('hint').style.display = 'none';
+
+  const overlay = document.getElementById('countdown-overlay');
+  const numElem = document.getElementById('countdown-number');
+  overlay.style.display = 'flex';
+
+  let count = 3;
+  function showStep(num) {
+    numElem.textContent = num;
+    numElem.style.opacity = '1';
+    numElem.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+      numElem.style.opacity = '0';
+      numElem.style.transform = 'scale(0.5)';
+    }, 650);
+  }
+
+  showStep(count);
+  const countInterval = setInterval(() => {
+    count--;
+    if (count > 0) {
+      showStep(count);
+    } else {
+      clearInterval(countInterval);
+      overlay.style.display = 'none';
+      endGame();
+    }
+  }, 850);
+}
+
+function endGame() {
+  if (gameState === 'ENDED') return;
+  gameState = 'ENDED';
+
+  const plateX = plateBody.position.x;
+  const plateY = plateBody.position.y;
+  const plateW = plateBody.render.w;
+  const maxAllowedOffset = plateW * 0.55;
+
+  let landedCount = 0;
+  let totalOffset = 0;
+  let topBreadLanded = false;
+
+  for (const b of droppedBodies) {
+    const isAboveBase = b.position.y < plateY + 60 && b.position.y > 0;
+    const isNotMoving = Math.abs(b.velocity.y) < 2.5 && Math.abs(b.velocity.x) < 2.5;
+    const xDist = Math.abs(b.position.x - plateX);
+
+    // If item did NOT fall off and stayed on the stack
+    if (isAboveBase && xDist < maxAllowedOffset && isNotMoving) {
+      landedCount++;
+      totalOffset += xDist;
+      if (b.isTopBread) topBreadLanded = true;
+    }
+  }
+
+  // Calculate Precision Percentage (0% to 100%)
+  let accuracyPercent = 0;
+  if (landedCount > 0) {
+    const avgOffset = totalOffset / landedCount;
+    const acc = Math.max(0, 1 - (avgOffset / maxAllowedOffset));
+    accuracyPercent = Math.round(acc * 100);
+  }
+
+  // Calculate score based on landed items, accuracy percentage, and remaining time
+  const basePoints = landedCount * 80;
+  const accuracyBonus = Math.round(accuracyPercent * 3.5);
+  const timeBonus = Math.max(0, timeLeft) * 8;
+  const topBonus = topBreadLanded ? 200 : 0;
+
+  score = basePoints + accuracyBonus + timeBonus + topBonus;
+  // Sync the HUD score badge immediately so top and center match perfectly
+  document.getElementById('score-val').textContent = score;
+
+  // Freeze settled bodies
+  for (const b of droppedBodies) {
+    if (Math.abs(b.velocity.y) < 1.0 && Math.abs(b.velocity.x) < 1.0) {
+      Body.setStatic(b, true);
+    }
+  }
+
+  // Recenter stack smoothly
+  let sumY = plateBody.position.y;
+  let count = 1;
+  let topmostY = plateBody.position.y;
+
+  slotLandedY = droppedBodies.map(b => b.position.y);
+  for (let i = 0; i < droppedBodies.length; i++) {
+    const b = droppedBodies[i];
+    if (b.position.y < plateBody.position.y + 60 && b.position.y > 0) {
+      sumY += b.position.y;
+      count++;
+      if (b.position.y < topmostY) topmostY = b.position.y;
+    }
+  }
+
+  const avgY = sumY / count;
+  const targetCenterY = H * 0.48;
+  stackRecenterOffsetY = targetCenterY - avgY;
+  stackRecenterBaseStartY = plateBody.position.y;
+  stackRecenterElapsed = 0;
+  stackRecenterActive = true;
+
+  const finalTopY = topmostY + stackRecenterOffsetY;
+  const finalBaseY = stackRecenterBaseStartY + stackRecenterOffsetY;
+
+  beginResultReveal(finalBaseY, finalTopY, accuracyPercent);
+}
+
+function beginResultReveal(finalBaseY, finalTopY, accuracyPercent) {
+  const t = TRANSLATIONS[currentLang];
+  const screen = document.getElementById('gameover-screen');
+  screen.style.display = 'block';
+
+  const scoreTextElem = document.getElementById('final-score-text');
+  scoreTextElem.textContent = score + ' ' + t.pts;
+
+  const accElem = document.getElementById('accuracy-badge');
+  accElem.textContent = t.accuracy + ': ' + accuracyPercent + '%';
+
+  resultBannerStartY = H * 0.48;
+  resultBannerEndY = finalTopY - 75;
+
+  resultBannerElapsed = 0;
+  resultBannerActive = true;
+
+  raysElapsed = 0;
+  document.getElementById('rays-bg').style.display = 'block';
+  raysActive = true;
+
+  const retryBtn = document.getElementById('btn-retry');
+  const retryY = finalBaseY + (plateBody.render.h / 2) + 50;
+  retryBtn.style.top = retryY + 'px';
+
+  retryButtonElapsed = 0;
+  retryButtonPending = true;
+}
+
+// Loop
+let lastTime = performance.now();
+function loop(now) {
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+
+  Engine.update(engine, 1000 / 60);
+
+  // Update oscillating active item
+  if (activeItem && gameState === 'PLAYING') {
+    oscAngle += dt * 3.2;
+    const swingRange = W * 0.32;
+    activeItem.x = (W / 2) + Math.sin(oscAngle) * swingRange;
+  }
+
+  // Live score update (monotonic: points only add when pieces settle, never flicker or subtract)
+  if (gameState === 'PLAYING') {
+    const plateY = plateBody.position.y;
+    for (const b of droppedBodies) {
+      if (!b.counted && b.position.y < plateY + 50 && b.position.y > 0) {
+        if (Math.abs(b.velocity.y) < 1.8 && Math.abs(b.velocity.x) < 1.8) {
+          b.counted = true;
+          score += (b.isTopBread ? 200 : 100);
+          document.getElementById('score-val').textContent = score;
+        }
+      }
+    }
+  }
+
+  // Animate stack recentering
+  if (stackRecenterActive) {
+    stackRecenterElapsed += dt;
+    const t = Math.min(stackRecenterElapsed / stackRecenterDurationSec, 1);
+
+    const newBaseY = stackRecenterBaseStartY + stackRecenterOffsetY * t;
+    Body.setPosition(plateBody, { x: plateBody.position.x, y: newBaseY });
+
+    for (let i = 0; i < droppedBodies.length; i++) {
+      const b = droppedBodies[i];
+      if (b.isStatic) {
+        const newY = slotLandedY[i] + stackRecenterOffsetY * t;
+        Body.setPosition(b, { x: b.position.x, y: newY });
+      }
+    }
+
+    if (t >= 1) {
+      stackRecenterActive = false;
+    }
+  }
+
+  // Animate rays
+  if (raysActive) {
+    raysElapsed += dt;
+    const t = Math.min(raysElapsed / raysScaleDurationSec, 1);
+    const rotDeg = (raysElapsed * raysRotationSpeedDeg) % 360;
+    const raysElem = document.getElementById('rays-bg');
+    raysElem.style.transform = 'translate(-50%, -50%) scale(' + t + ') rotate(' + rotDeg + 'deg)';
+  }
+
+  // Animate result banner (score + accuracy percentage)
+  if (resultBannerActive) {
+    resultBannerElapsed += dt;
+    const t = Math.min(resultBannerElapsed / resultBannerAnimDurationSec, 1);
+    const currY = resultBannerStartY + (resultBannerEndY - resultBannerStartY) * t;
+    const bannerElem = document.getElementById('result-banner');
+    bannerElem.style.top = currY + 'px';
+    bannerElem.style.transform = 'translate(-50%, -50%) scale(' + t + ')';
+  }
+
+  // Delayed retry button
+  if (retryButtonPending) {
+    retryButtonElapsed += dt;
+    if (retryButtonElapsed >= retryButtonDelaySec) {
+      retryButtonPending = false;
+      document.getElementById('btn-retry').style.display = 'block';
+    }
+  }
+
+  // Draw
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw base bread
+  drawBodyImage(plateBody, plateBody.render.key, plateBody.render.w, plateBody.render.h);
+
+  // Draw dropped items
+  for (const b of droppedBodies) {
+    drawBodyImage(b, b.renderKey, b.renderW, b.renderH);
+  }
+
+  // Draw swinging item
+  if (activeItem) {
+    const img = preloadedImgs[activeItem.key];
+    if (img && img.complete) {
+      ctx.save();
+      ctx.translate(activeItem.x, activeItem.y);
+      ctx.drawImage(img, -activeItem.w / 2, -activeItem.h / 2, activeItem.w, activeItem.h);
+      ctx.restore();
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+
+function drawBodyImage(body, key, w, h) {
+  const img = preloadedImgs[key];
+  if (!img || !img.complete) return;
+
+  ctx.save();
+  ctx.translate(body.position.x, body.position.y);
+  ctx.rotate(body.angle);
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+// Initialize default English
+setLanguage('en');
+initPhysics();
+startTimer();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
