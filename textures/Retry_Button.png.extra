@@ -1,0 +1,32 @@
+[
+  {
+    "guid": {
+      "a": "aa3356e0-08d6-f1fe-5328-2c1daab4c6c0",
+      "b": ""
+    },
+    "extraType": "ResItemPNGImage",
+    "name": "Retry_Button",
+    "version": "0.2.0",
+    "rttiType": "Texture",
+    "authorizationInfo": "",
+    "extendedInfo": {
+      "isVisibleInInspector": true,
+      "hideInPanel": false,
+      "expandInPanel": false
+    },
+    "compressionType": 0,
+    "compressQuality": 0,
+    "compressMaxResolution": 512,
+    "enableMipmap": false,
+    "filterMin": 1,
+    "filterMag": 1,
+    "filterMipmap": 0,
+    "wrapModeS": 0,
+    "wrapModeT": 0,
+    "wrapModeR": 0,
+    "premultiplyAlpha": false,
+    "objGuid": "",
+    "resourceFilePath": "/Users/bytedance/Documents/Tiktok/EH模版/CatchPresicion/Sandwich/Retry_Button_01.png",
+    "references": []
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "guid": {
+      "a": "91a4accc-7029-3374-0eb5-87a1997058e6",
+      "b": ""
+    },
+    "extraType": "ResItemPNGImage",
+    "name": "Bread_Asset",
+    "version": "0.2.0",
+    "rttiType": "Texture",
+    "authorizationInfo": "",
+    "extendedInfo": {
+      "isVisibleInInspector": true,
+      "hideInPanel": false,
+      "expandInPanel": false
+    },
+    "compressionType": 0,
+    "compressQuality": 0,
+    "compressMaxResolution": 512,
+    "enableMipmap": false,
+    "filterMin": 1,
+    "filterMag": 1,
+    "filterMipmap": 0,
+    "wrapModeS": 0,
+    "wrapModeT": 0,
+    "wrapModeR": 0,
+    "premultiplyAlpha": false,
+    "objGuid": "",
+    "resourceFilePath": "/Users/bytedance/Documents/Tiktok/EH模版/CatchPresicion/Sandwich/style2/assets_ready/Bread_Asset.png",
+    "references": []
+  }
+]
